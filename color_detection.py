@@ -1,69 +1,65 @@
-# pip install pandas opencv-python
-# visit pyGuru on youtube
-
 import cv2
-import pandas as pd
+import numpy as np
 
-# --------------------------------------------------------------------------
+def get_dominant_color(image_path):
+    """Get the average RGB color of the image."""
+    # Load the image
+    image = cv2.imread(image_path)
 
-img_path = 'pic2.jpg'
-csv_path = 'colors.csv'
+    # Resize image to reduce computation (optional)
+    image = cv2.resize(image, (300, 300))
 
-# reading csv file
-index = ['color', 'color_name', 'hex', 'R', 'G', 'B']
-df = pd.read_csv(csv_path, names=index, header=None)
+    # Convert the image from BGR to RGB (OpenCV uses BGR by default)
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-# reading image
-img = cv2.imread(img_path)
-img = cv2.resize(img, (800,600))
+    # Reshape the image to a 2D array (each pixel is a row with R, G, B values)
+    pixels = image_rgb.reshape(-1, 3)
 
-#declaring global variables
-clicked = False
-r = g = b = xpos = ypos = 0
+    # Calculate the average color
+    average_color = np.mean(pixels, axis=0)
 
-#function to calculate minimum distance from all colors and get the most matching color
-def get_color_name(R,G,B):
-	minimum = 1000
-	for i in range(len(df)):
-		d = abs(R - int(df.loc[i,'R'])) + abs(G - int(df.loc[i,'G'])) + abs(B - int(df.loc[i,'B']))
-		if d <= minimum:
-			minimum = d
-			cname = df.loc[i, 'color_name']
+    return average_color
 
-	return cname
+def get_color_name(rgb):
+    """Find the closest color name based on the RGB values."""
+    # Define basic color names and their RGB ranges
+    color_names = {
+        "Red": [255, 0, 0],
+        "Green": [0, 255, 0],
+        "Blue": [0, 0, 255],
+        "Yellow": [255, 255, 0],
+        "Cyan": [0, 255, 255],
+        "Magenta": [255, 0, 255],
+        "Black": [0, 0, 0],
+        "White": [255, 255, 255],
+        "Gray": [169, 169, 169],
+    }
 
-#function to get x,y coordinates of mouse double click
-def draw_function(event, x, y, flags, params):
-	if event == cv2.EVENT_LBUTTONDBLCLK:
-		global b, g, r, xpos, ypos, clicked
-		clicked = True
-		xpos = x
-		ypos = y
-		b,g,r = img[y,x]
-		b = int(b)
-		g = int(g)
-		r = int(r)
+    # Compare the RGB value to basic color ranges
+    closest_color = None
+    min_distance = float("inf")
 
-# creating window
-cv2.namedWindow('image')
-cv2.setMouseCallback('image', draw_function)
+    for color_name, color_rgb in color_names.items():
+        # Calculate Euclidean distance between the input color and the known colors
+        distance = np.linalg.norm(np.array(rgb) - np.array(color_rgb))
+        if distance < min_distance:
+            min_distance = distance
+            closest_color = color_name
 
-while True:
-	cv2.imshow('image', img)
-	if clicked:
-		#cv2.rectangle(image, startpoint, endpoint, color, thickness)-1 fills entire rectangle 
-		cv2.rectangle(img, (20,20), (600,60), (b,g,r), -1)
+    return closest_color
 
-		#Creating text string to display( Color name and RGB values )
-		text = get_color_name(r,g,b) + ' R=' + str(r) + ' G=' + str(g) + ' B=' + str(b)
-		#cv2.putText(img,text,start,font(0-7),fontScale,color,thickness,lineType )
-		cv2.putText(img, text, (50,50), 2,0.8, (255,255,255),2,cv2.LINE_AA)
+def main():
+    # Path to the image you want to analyze
+    image_path = 'images/sample_image.jpg'  # Change this path if necessary
 
-		#For very light colours we will display text in black colour
-		if r+g+b >=600:
-			cv2.putText(img, text, (50,50), 2,0.8, (0,0,0),2,cv2.LINE_AA)
+    # Get the average RGB color of the image
+    avg_color = get_dominant_color(image_path)
 
-	if cv2.waitKey(20) & 0xFF == 27:
-		break
+    # Get the closest color name based on the average RGB
+    color_name = get_color_name(avg_color)
 
-cv2.destroyAllWindows()
+    print(f"Average RGB Color: {avg_color}")
+    print(f"Detected Color Name: {color_name}")
+
+if __name__ == "__main__":
+    main()
